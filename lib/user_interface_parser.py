@@ -1,6 +1,9 @@
 import json
 
 
+CHAT_WINDOW_STACK_KEY = 'chatWindowStack'
+
+
 def parse_memory_read_to_ui_tree(file_path):
     with open(file_path) as f:
         return json.load(f)
@@ -22,12 +25,13 @@ def get_root_memory_address(ui_tree):
     return ui_tree['pythonObjectAddress']
 
 
+# use iteration to avoid exceeding recursion limit.
 def __filter_nodes(ui_tree, node_condition):
     nodes_to_check = [ui_tree]
     results = []
 
     while nodes_to_check:
-        node = nodes_to_check.pop()
+        node = nodes_to_check.pop(0)
 
         if node_condition(node):
             node.pop('otherDictEntriesKeys', None)
