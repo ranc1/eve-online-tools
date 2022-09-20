@@ -4,23 +4,21 @@ import subprocess
 import time
 import lib.beep_player as beep_player
 import logging
-import psutil
+import uuid
 
 
 GOOD_STANDING_PATTERN = ['good standing', 'excellent standing', 'is in your']
-MEM_READ_OUTPUT_FILE = 'tmp/mem_read.json'
 
 logger = logging.getLogger('local-monitor-bots')
 logger.setLevel(logging.INFO)
 
 
 class LocalMonitorBot:
-    def __init__(self, monitor_character):
+    def __init__(self, monitor_character, process_id):
         self.monitor_character = monitor_character
-        pid = self.__get_process()
-        logger.info(f'Using first started EVE process with PID: {pid}')
-        self.pid = pid
+        self.pid = process_id
         self.last_success_time = time.time()
+        self.mem_read_output_file = f'tmp/mem-read-{uuid.uuid5(uuid.NAMESPACE_URL, self.monitor_character)}.json'
 
     def run(self):
         os.makedirs('tmp', exist_ok=True)
@@ -28,7 +26,7 @@ class LocalMonitorBot:
         consecutive_alarm_count = 0
         previous_hostiles = []
 
-        command = f'"mem_reader/read-memory-64-bit.exe" read-memory-eve-online --pid {self.pid} --output-file {MEM_READ_OUTPUT_FILE}'
+        command = f'"mem_reader/read-memory-64-bit.exe" read-memory-eve-online --pid {self.pid} --output-file {self.mem_read_output_file}'
 
         while True:
             if time.time() - self.last_success_time > 30:
@@ -39,7 +37,7 @@ class LocalMonitorBot:
                 mem_read_process = subprocess.run(command, shell=True)
                 mem_read_process.check_returncode()
 
-                ui_tree = parser.parse_memory_read_to_ui_tree(MEM_READ_OUTPUT_FILE)
+                ui_tree = parser.parse_memory_read_to_ui_tree(self.mem_read_output_file)
                 if not root_memory_address_set:
                     command += f' --root-address {parser.get_root_memory_address(ui_tree)}'
                     root_memory_address_set = True
@@ -88,9 +86,3 @@ class LocalMonitorBot:
         duration_in_millis = 250
         for i in range(count):
             beep_player.play(frequency, duration_in_millis / 1000)
-
-    @staticmethod
-    def __get_process():
-        process = min(filter(lambda proc: proc.name() == 'exefile.exe', psutil.process_iter()),
-                      key=lambda proc: proc.create_time())
-        return process.pid
