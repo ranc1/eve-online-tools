@@ -2,7 +2,7 @@ import lib.user_interface_parser as parser
 import os
 import subprocess
 import time
-import lib.beep_player as beep_player
+import winsound
 import logging
 import uuid
 
@@ -85,4 +85,4 @@ class LocalMonitorBot:
         frequency = 440
         duration_in_millis = 250
         for i in range(count):
-            beep_player.play(frequency, duration_in_millis / 1000)
+            winsound.Beep(frequency, duration_in_millis)
