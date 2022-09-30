@@ -14,9 +14,10 @@ logger = logging.getLogger('bot-master')
 logger.setLevel(logging.INFO)
 
 
-def __get_process():
-    process = min(filter(lambda proc: proc.name() == 'exefile.exe', psutil.process_iter()),
-                  key=lambda proc: proc.create_time())
+def __get_process(is_last):
+    comparator = max if is_last else min
+    process = comparator(filter(lambda proc: proc.name() == 'exefile.exe', psutil.process_iter()),
+                         key=lambda proc: proc.create_time())
     return process.pid
 
 
@@ -28,6 +29,7 @@ if __name__ == '__main__':
 
     arg_parser.add_argument('-m', help='Monitor character name', required=True)
     arg_parser.add_argument('-p', help='Process ID. If not specified, use first EVE Online process')
+    arg_parser.add_argument('-l', help='Use latest started process', action='store_true')
 
     args = arg_parser.parse_args()
 
@@ -35,8 +37,8 @@ if __name__ == '__main__':
     if pid:
         logger.info(f'Using provided EVE process with PID: {pid}')
     else:
-        pid = __get_process()
-        logger.info(f'Using first started EVE process with PID: {pid}')
+        pid = __get_process(args.l)
+        logger.info(f'Using {"latest" if args.l else "first"} started EVE process with PID: {pid}')
 
     bot = LocalMonitorBot(monitor_character=args.m, process_id=pid)
 
