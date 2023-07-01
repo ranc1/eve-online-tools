@@ -30,6 +30,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('-m', help='Monitor character name', required=True)
     arg_parser.add_argument('-p', help='Process ID. If not specified, use first EVE Online process')
     arg_parser.add_argument('-l', help='Use latest started process', action='store_true')
+    arg_parser.add_argument('-q', help='Use quieter alarm but longer alarm cycle', action='store_true')
 
     args = arg_parser.parse_args()
 
@@ -40,6 +41,7 @@ if __name__ == '__main__':
         pid = __get_process(args.l)
         logger.info(f'Using {"latest" if args.l else "first"} started EVE process with PID: {pid}')
 
-    bot = LocalMonitorBot(monitor_character=args.m, process_id=pid)
+    bot = LocalMonitorBot(monitor_character=args.m, process_id=pid, use_quiet_alarm=args.q)
+    logger.info('Initializing bot... This takes a few minutes so please keep your eve window open and focused')
 
     bot.run()

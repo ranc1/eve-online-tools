@@ -14,15 +14,19 @@ GOOD_STANDING_PATTERN = [
         '所属',
         '良好',
         '優良']
+LOUD_ALARM_FILE = './resources/structure_warning.wav'
 
 logger = logging.getLogger('local-monitor-bots')
 logger.setLevel(logging.INFO)
 
 
 class LocalMonitorBot:
-    def __init__(self, monitor_character, process_id):
+    def __init__(self, monitor_character, process_id, use_quiet_alarm):
         self.monitor_character = monitor_character
         self.pid = process_id
+        self.use_quiet_alarm = use_quiet_alarm
+        self.alarm_cycle_count = 30 if use_quiet_alarm else 10 
+        self.monitor_down_alarm_second = 30;
         self.last_success_time = time.time()
         self.mem_read_output_file = f'tmp/mem-read-{uuid.uuid5(uuid.NAMESPACE_URL, self.monitor_character)}.json'
 
@@ -35,8 +39,8 @@ class LocalMonitorBot:
         command = f'"mem_reader/read-memory-64-bit.exe" read-memory-eve-online --pid {self.pid} --output-file {self.mem_read_output_file}'
 
         while True:
-            if time.time() - self.last_success_time > 30:
-                self.__sound_alarm(3)
+            if time.time() - self.last_success_time > self.monitor_down_alarm_second:
+                self.__sound_alarm()
                 logger.warning(f'Monitor is down. Last scan: {time.ctime(self.last_success_time)} PST')
 
             try:
@@ -61,8 +65,8 @@ class LocalMonitorBot:
                             consecutive_alarm_count = 0
 
                         logger.warning(f'{hostiles}. Consecutive alarms: {consecutive_alarm_count}')
-                        if consecutive_alarm_count < 30:
-                            self.__sound_alarm(2)
+                        if consecutive_alarm_count < self.alarm_cycle_count:
+                            self.__sound_alarm()
                     else:
                         consecutive_alarm_count = 0
 
@@ -81,14 +85,24 @@ class LocalMonitorBot:
             standing = user['standing']
             return not standing or not any(pattern in standing.lower() for pattern in GOOD_STANDING_PATTERN)
 
+    def __sound_alarm(self):
+        if self.use_quiet_alarm:
+            self.__sound_quiet_alarm(2)
+        else:
+            self.__sound_loud_alarm()
+
     @staticmethod
     def __get_local_chat(chat_windows):
         local_chat = list(filter(lambda chat: chat['name'].endswith('_local'), chat_windows))
         return local_chat[0] if local_chat else None
 
     @staticmethod
-    def __sound_alarm(count):
+    def __sound_quiet_alarm(count):
         frequency = 440
         duration_in_millis = 250
         for i in range(count):
             winsound.Beep(frequency, duration_in_millis)
+
+    @staticmethod
+    def __sound_loud_alarm():
+        winsound.PlaySound(LOUD_ALARM_FILE, 1)
