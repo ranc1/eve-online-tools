@@ -7,7 +7,13 @@ import logging
 import uuid
 
 
-GOOD_STANDING_PATTERN = ['good standing', 'excellent standing', 'is in your']
+GOOD_STANDING_PATTERN = [
+        'good standing',
+        'excellent standing',
+        'is in your',
+        '所属',
+        '良好',
+        '優良']
 
 logger = logging.getLogger('local-monitor-bots')
 logger.setLevel(logging.INFO)
