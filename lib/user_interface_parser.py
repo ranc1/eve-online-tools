@@ -174,7 +174,7 @@ def __get_children_with_display_region(parent) -> list:
     return children_results
 
 
-def __get_display_region(node) -> Optional[dict[str, int]]:
+def __get_display_region(node) -> Optional[dict[str, float]]:
     entries_of_interest = node[ENTRIES_OF_INTEREST]
     if all(key in entries_of_interest for key in ('_displayX', '_displayY', '_displayWidth', '_displayHeight')):
         return {
@@ -187,9 +187,9 @@ def __get_display_region(node) -> Optional[dict[str, int]]:
         return None
 
 
-def __get_json_int(node, key) -> int:
+def __get_json_int(node, key) -> float:
     value = node[key]
-    if isinstance(value, int):
+    if isinstance(value, int) or isinstance(value, float):
         return value
     elif 'int_low32' in value:
         return value['int_low32']
