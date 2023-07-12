@@ -45,11 +45,10 @@ class LocalMonitorBot:
 
                 ui_tree = parser.parse_memory_read_to_ui_tree(self.mem_read_output_file)
                 if not root_memory_address_set:
-                    command += f' --root-address {parser.get_root_memory_address(ui_tree)}'
+                    command += f' --root-address {ui_tree.root_address}'
                     root_memory_address_set = True
 
-                chat_windows = parser.parse_chat_windows(ui_tree)
-                local_chat = self.__get_local_chat(chat_windows)
+                local_chat = self.__get_local_chat(ui_tree.chat_windows)
 
                 if local_chat:
                     hostiles = list(filter(self.__is_hostile, local_chat['userlist']))

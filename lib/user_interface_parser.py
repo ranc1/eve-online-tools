@@ -1,28 +1,26 @@
 import json
+from typing import Optional
+
+TOTAL_DISPLAY_REGION = 'totalDisplayRegion'
+CHILDREN = 'children'
+ADDRESS = 'pythonObjectAddress'
+TYPE_NAME = 'pythonObjectTypeName'
+ENTRIES_OF_INTEREST = 'dictEntriesOfInterest'
 
 
-CHAT_WINDOW_STACK_KEY = 'chatWindowStack'
+class UiTree:
+    def __init__(self):
+        self.root_address = None
+        self.chat_windows = None
+        self.overview = None
 
 
 def parse_memory_read_to_ui_tree(file_path):
     with open(file_path) as f:
-        return json.load(f)
+        ui_tree_root = json.load(f)
+        ui_tree_root[TOTAL_DISPLAY_REGION] = __get_display_region(ui_tree_root)
 
-
-def parse_chat_windows(ui_tree):
-    chat_window_stacks = __filter_nodes(ui_tree, lambda node: node['pythonObjectTypeName'] == 'ChatWindowStack')
-    chat_windows_nodes = list(map(
-        lambda ui_node: __filter_nodes(ui_node, lambda node: node['pythonObjectTypeName'] == 'XmppChatWindow')[0],
-        chat_window_stacks))
-
-    return list(map(lambda node: {
-        'name': __get_name_from_dict_entries(node),
-        'userlist': __parse_user_lists_from_chat(node)
-    }, chat_windows_nodes))
-
-
-def get_root_memory_address(ui_tree):
-    return ui_tree['pythonObjectAddress']
+        return __parse_ui_tree_json(ui_tree_root)
 
 
 # use iteration to avoid exceeding recursion limit.
@@ -37,55 +35,163 @@ def __filter_nodes(ui_tree, node_condition):
             node.pop('otherDictEntriesKeys', None)
             results.append(node)
         else:
-            children = node['children']
-            if children:
-                nodes_to_check.extend(filter(__display_region_filter, children))
+            nodes_to_check.extend(__get_children_with_display_region(node))
 
     return results
 
 
+def __parse_ui_tree_json(ui_tree_root) -> UiTree:
+    nodes_to_check = [ui_tree_root]
+    chat_window_stacks = []
+    overview_window = None
+
+    while nodes_to_check:
+        node = nodes_to_check.pop(0)
+
+        if node[TYPE_NAME] == 'ChatWindowStack':
+            node.pop('otherDictEntriesKeys', None)
+            chat_window_stacks.append(node)
+        elif node[TYPE_NAME] == 'OverviewWindow':
+            node.pop('otherDictEntriesKeys', None)
+            overview_window = node
+        else:
+            nodes_to_check.extend(__get_children_with_display_region(node))
+
+    ui_tree = UiTree()
+    ui_tree.root_address = ui_tree_root[ADDRESS]
+    if chat_window_stacks:
+        ui_tree.chat_windows = __parse_chat_windows(chat_window_stacks)
+    if overview_window:
+        ui_tree.overview = __parse_overview(overview_window)
+
+    return ui_tree
+
+
+def __parse_overview(overview_window) -> list[dict]:
+    parsed_entries = []
+
+    scroll = __filter_nodes(overview_window, lambda node: 'scroll' in node[TYPE_NAME].lower())[0]
+    header = __filter_nodes(scroll, lambda node: 'headers' in node[TYPE_NAME].lower())[0]
+    entries = __filter_nodes(overview_window, lambda node: node[TYPE_NAME] == 'OverviewScrollEntry')
+
+    header_texts_nodes = __get_all_contained_text(header)
+
+    for entry in entries:
+        parsed_entry = {}
+        for (entry_text, entry_node) in __get_all_contained_text(entry):
+            entry_display_region = entry_node[TOTAL_DISPLAY_REGION]
+            entry_x = entry_display_region['x']
+            entry_width = entry_display_region['width']
+            for (header_text, header_node) in header_texts_nodes:
+                header_display_region = header_node[TOTAL_DISPLAY_REGION]
+                header_x = header_display_region['x']
+                header_width = header_display_region['width']
+
+                if header_x < entry_x + 3 and header_x + header_width > entry_x + entry_width - 3:
+                    parsed_entry[header_text] = entry_text
+                    break
+
+        parsed_entries.append(parsed_entry)
+    return parsed_entries
+
+
+def __parse_chat_windows(chat_window_stacks):
+    chat_window_nodes = list(map(
+        lambda ui_node: __filter_nodes(ui_node, lambda node: node[TYPE_NAME] == 'XmppChatWindow')[0],
+        chat_window_stacks))
+
+    return list(map(lambda node: {
+        'name': __get_name_from_dict_entries(node),
+        'userlist': __parse_user_lists_from_chat(node)
+    }, chat_window_nodes))
+
+
 def __display_region_filter(node):
-    return all(key in node['dictEntriesOfInterest']
+    return all(key in node[ENTRIES_OF_INTEREST]
                for key in ('_displayX', '_displayY', '_displayWidth', '_displayHeight'))
 
 
 def __parse_user_lists_from_chat(chat_ui_node):
     user_list_node = __filter_nodes(chat_ui_node, lambda node: 'userlist' == __get_name_from_dict_entries(node))[0]
     user_entry_nodes = __filter_nodes(
-        user_list_node, lambda node: node['pythonObjectTypeName'] in ('XmppChatSimpleUserEntry', 'XmppChatUserEntry'))
+        user_list_node, lambda node: node[TYPE_NAME] in ('XmppChatSimpleUserEntry', 'XmppChatUserEntry'))
 
     return list(map(lambda node: {
-        "name": max(__get_all_contained_text(node), key=len),
+        "name": max(__get_all_contained_text(node), key=lambda node_text: len(node_text[0]))[0],
         "standing": __get_standing_icon_hint(node)
     }, user_entry_nodes))
 
 
 def __get_standing_icon_hint(user_entry_node):
-    standing_icon_node = __filter_nodes(user_entry_node,
-                                        lambda node: node['pythonObjectTypeName'] == 'FlagIconWithState')
-    return standing_icon_node[0]['dictEntriesOfInterest']['_hint'] if standing_icon_node else None
+    standing_icon_node = __filter_nodes(
+        user_entry_node, lambda node: node[TYPE_NAME] == 'FlagIconWithState')
+    return standing_icon_node[0][ENTRIES_OF_INTEREST]['_hint'] if standing_icon_node else None
 
 
 def __get_name_from_dict_entries(node):
-    return node['dictEntriesOfInterest'].get('_name', '')
+    return node[ENTRIES_OF_INTEREST].get('_name', '')
 
 
-def __get_all_contained_text(root_node):
+def __get_all_contained_text(root_node) -> [(str, dict)]:
+    """
+    Parse contained texts as a list from root_node and its children.
+    :param root_node: Root
+    :return: List of (text, node) tuples.
+    """
     nodes_to_check = [root_node]
     results = []
 
     while nodes_to_check:
-        node = nodes_to_check.pop()
+        node = nodes_to_check.pop(0)
 
-        set_text_result = node['dictEntriesOfInterest'].get('_setText', None)
-        text_result = node['dictEntriesOfInterest'].get('_text', None)
+        set_text_result = node[ENTRIES_OF_INTEREST].get('_setText', None)
+        text_result = node[ENTRIES_OF_INTEREST].get('_text', None)
         if set_text_result:
-            results.append(set_text_result)
+            results.append((set_text_result, node))
         if text_result:
-            results.append(text_result)
+            results.append((text_result, node))
 
-        children = node['children']
-        if children:
-            nodes_to_check.extend(filter(__display_region_filter, children))
+        nodes_to_check.extend(__get_children_with_display_region(node))
 
     return results
+
+
+def __get_children_with_display_region(parent) -> list:
+    parent_display_region = parent[TOTAL_DISPLAY_REGION]
+    children = parent.get(CHILDREN, None)
+    children_results = []
+
+    if children:
+        for child in children:
+            display_region = __get_display_region(child)
+            if display_region:
+                display_region['x'] += parent_display_region['x']
+                display_region['y'] += parent_display_region['y']
+                child[TOTAL_DISPLAY_REGION] = display_region
+
+                children_results.append(child)
+
+    return children_results
+
+
+def __get_display_region(node) -> Optional[dict[str, int]]:
+    entries_of_interest = node[ENTRIES_OF_INTEREST]
+    if all(key in entries_of_interest for key in ('_displayX', '_displayY', '_displayWidth', '_displayHeight')):
+        return {
+            'x': __get_json_int(entries_of_interest, '_displayX'),
+            'y': __get_json_int(entries_of_interest, '_displayY'),
+            'width': __get_json_int(entries_of_interest, '_displayWidth'),
+            'height': __get_json_int(entries_of_interest, '_displayHeight')
+        }
+    else:
+        return None
+
+
+def __get_json_int(node, key) -> int:
+    value = node[key]
+    if isinstance(value, int):
+        return value
+    elif 'int_low32' in value:
+        return value['int_low32']
+    else:
+        return 0
