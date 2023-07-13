@@ -19,7 +19,7 @@ class UiTree:
         self.overview = None
 
 
-def parse_memory_read_to_ui_tree(file_path):
+def parse_memory_read_to_ui_tree(file_path: str):
     with open(file_path) as f:
         ui_tree_root = json.load(f)
         ui_tree_root[TOTAL_DISPLAY_REGION] = __get_display_region(ui_tree_root)
@@ -28,7 +28,7 @@ def parse_memory_read_to_ui_tree(file_path):
 
 
 # use iteration to avoid exceeding recursion limit.
-def __filter_nodes(ui_tree, node_condition, parent_only=True):
+def __filter_nodes(ui_tree: dict, node_condition, parent_only: bool = True):
     nodes_to_check = [ui_tree]
     results = []
 
@@ -46,7 +46,7 @@ def __filter_nodes(ui_tree, node_condition, parent_only=True):
     return results
 
 
-def __parse_ui_tree_json(ui_tree_root) -> UiTree:
+def __parse_ui_tree_json(ui_tree_root: dict) -> UiTree:
     nodes_to_check = [ui_tree_root]
     chat_window_stacks = []
     overview_window = None
@@ -71,7 +71,7 @@ def __parse_ui_tree_json(ui_tree_root) -> UiTree:
     return ui_tree
 
 
-def __parse_overview(overview_window) -> list[dict]:
+def __parse_overview(overview_window: dict) -> list[dict]:
     parsed_entries = []
 
     scroll = __filter_nodes(overview_window, lambda node: 'scroll' in node[TYPE_NAME].lower())[0]
@@ -96,20 +96,8 @@ def __parse_overview(overview_window) -> list[dict]:
                     parsed_entry[header_text] = entry_text
                     break
 
-        # parse icon indicators
-        space_object_icon = __filter_nodes(entry, lambda node: node[TYPE_NAME] == 'SpaceObjectIcon')[0]
-        indicator_nodes = __filter_nodes(space_object_icon, lambda node: '_name' in node[ENTRIES_OF_INTEREST],
-                                         parent_only=False)
-        indicator_texts = list(map(lambda node: __get_text_from_dict_entries(node, NAME), indicator_nodes))
-
-        # parse right aligned icons
-        icon_texts = []
-        right_aligned_icons = __filter_nodes(
-            entry, lambda node: __get_text_from_dict_entries(node, NAME) == 'rightAlignedIconContainer')
-        if right_aligned_icons:
-            # Should only be at most 1 right_aligned_icons container for each entry
-            icon_text_nodes = __filter_nodes(right_aligned_icons[0], lambda node: '_hint' in node[ENTRIES_OF_INTEREST])
-            icon_texts.extend(list(map(lambda node: __get_text_from_dict_entries(node, HINT).lower(), icon_text_nodes)))
+        indicator_texts = __parse_space_object_icon_texts(entry)
+        icon_texts = __parse_right_aligned_icons(entry)
 
         indicators = {
             'lockedMe': 'hostile' in indicator_texts,
@@ -120,7 +108,8 @@ def __parse_overview(overview_window) -> list[dict]:
             'neut': any('is cap neutralizing me' in text for text in icon_texts),
             'trackingDisrupt': any('is tracking disrupting me' in text for text in icon_texts),
             'jam': any('is jamming me' in text for text in icon_texts),
-            'warpDisrupt': any('is warp disrupting me' in text for text in icon_texts)
+            'warpDisrupt': any('is warp disrupting me' in text for text in icon_texts),
+            'web': any('is webifying me' in text for text in icon_texts)
         }
         parsed_entry[ENTRY_INDICATORS] = indicators
 
@@ -128,7 +117,41 @@ def __parse_overview(overview_window) -> list[dict]:
     return parsed_entries
 
 
-def __parse_chat_windows(chat_window_stacks):
+def __parse_space_object_icon_texts(entry: dict) -> list[str]:
+    """
+    Parse space object icon (icon of Overview entry) as texts.
+    Describes if the entry is targeting, attacking, etc.
+    :param entry: Overview entry node.
+    :return: Entry indicators. ie,: [hostile, attackingMe, targeting, targetedByMeIndicator, myActiveTargetIndicator]
+    """
+    space_object_icon = __filter_nodes(entry, lambda node: node[TYPE_NAME] == 'SpaceObjectIcon')
+
+    if space_object_icon:
+        indicator_nodes = __filter_nodes(space_object_icon[0], lambda node: '_name' in node[ENTRIES_OF_INTEREST],
+                                         parent_only=False)
+        return list(map(lambda node: __get_text_from_dict_entries(node, NAME), indicator_nodes))
+    else:
+        return []
+
+
+def __parse_right_aligned_icons(entry: dict) -> list[str]:
+    """
+    Parse right aligned icons as lower-case texts. Describes if the entry is E-War against the user.
+    :param entry: Overview entry node.
+    :return: Entry indicators. ie.: [pilot is cap neutralizing me, pilot is warp disrupting me]
+    """
+    icon_texts = []
+    right_aligned_icons = __filter_nodes(
+        entry, lambda node: __get_text_from_dict_entries(node, NAME) == 'rightAlignedIconContainer')
+    if right_aligned_icons:
+        # Should only be at most 1 right_aligned_icons container for each entry
+        icon_text_nodes = __filter_nodes(right_aligned_icons[0], lambda node: '_hint' in node[ENTRIES_OF_INTEREST])
+        icon_texts.extend(list(map(lambda node: __get_text_from_dict_entries(node, HINT).lower(), icon_text_nodes)))
+
+    return icon_texts
+
+
+def __parse_chat_windows(chat_window_stacks: list[dict]) -> list[dict]:
     chat_window_nodes = list(map(
         lambda ui_node: __filter_nodes(ui_node, lambda node: node[TYPE_NAME] == 'XmppChatWindow')[0],
         chat_window_stacks))
@@ -139,12 +162,7 @@ def __parse_chat_windows(chat_window_stacks):
     }, chat_window_nodes))
 
 
-def __display_region_filter(node):
-    return all(key in node[ENTRIES_OF_INTEREST]
-               for key in ('_displayX', '_displayY', '_displayWidth', '_displayHeight'))
-
-
-def __parse_user_lists_from_chat(chat_ui_node):
+def __parse_user_lists_from_chat(chat_ui_node: dict) -> list[dict[str, str]]:
     user_list_node = __filter_nodes(
         chat_ui_node, lambda node: 'userlist' == __get_text_from_dict_entries(node, NAME))[0]
     user_entry_nodes = __filter_nodes(
@@ -156,13 +174,13 @@ def __parse_user_lists_from_chat(chat_ui_node):
     }, user_entry_nodes))
 
 
-def __get_standing_icon_hint(user_entry_node):
+def __get_standing_icon_hint(user_entry_node: dict) -> str:
     standing_icon_node = __filter_nodes(
         user_entry_node, lambda node: node[TYPE_NAME] == 'FlagIconWithState')
     return standing_icon_node[0][ENTRIES_OF_INTEREST]['_hint'] if standing_icon_node else None
 
 
-def __get_text_from_dict_entries(node,  key):
+def __get_text_from_dict_entries(node: dict,  key: str) -> str:
     return node[ENTRIES_OF_INTEREST].get(key, '')
 
 

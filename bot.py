@@ -1,11 +1,18 @@
-import sys
-
-from bots.local_monitor_bot import LocalMonitorBot
 import argparse
+import json
 import logging
 import os
+import subprocess
+import sys
+import time
+import uuid
+
 import psutil
 
+import lib.sound_module as sound
+import lib.user_interface_parser as parser
+from bots.local_monitor_bot import LocalMonitorBot
+from lib.user_interface_parser import UiTree
 
 # Configure logging root
 logging.basicConfig()
@@ -14,11 +21,29 @@ logger = logging.getLogger('bot-master')
 logger.setLevel(logging.INFO)
 
 
-def __get_process(is_last):
+def __get_process(is_last: bool) -> int:
     comparator = max if is_last else min
     process = comparator(filter(lambda proc: proc.name() == 'exefile.exe', psutil.process_iter()),
                          key=lambda proc: proc.create_time())
     return process.pid
+
+
+def __read_ui_tree(pid: int, output_file: str, root_address=None) -> UiTree:
+    os.makedirs('tmp', exist_ok=True)
+
+    command = f'"mem_reader/read-memory-64-bit.exe" read-memory-eve-online --pid {pid} --output-file {output_file}'
+    if root_address:
+        command += f' --root-address {root_address}'
+
+    mem_read_process = None
+    try:
+        mem_read_process = subprocess.run(command, shell=True, stdout=subprocess.PIPE)
+        mem_read_process.check_returncode()
+
+        return parser.parse_memory_read_to_ui_tree(output_file)
+    except subprocess.CalledProcessError as ex:
+        logger.error(f'Failed to run memory reader: {mem_read_process.stdout}')
+        raise ex
 
 
 if __name__ == '__main__':
@@ -27,19 +52,55 @@ if __name__ == '__main__':
 
     arg_parser = argparse.ArgumentParser()
 
-    arg_parser.add_argument('-m', help='Monitor character name', required=True)
+    arg_parser.add_argument('-c', help='Bot configuration file name', required=True)
     arg_parser.add_argument('-p', help='Process ID. If not specified, use first EVE Online process')
     arg_parser.add_argument('-l', help='Use latest started process', action='store_true')
 
     args = arg_parser.parse_args()
 
-    pid = args.p
-    if pid:
-        logger.info(f'Using provided EVE process with PID: {pid}')
+    process_id = args.p
+    if process_id:
+        logger.info(f'Using provided EVE process with PID: {process_id}')
     else:
-        pid = __get_process(args.l)
-        logger.info(f'Using {"latest" if args.l else "first"} started EVE process with PID: {pid}')
+        process_id = __get_process(args.l)
+        logger.info(f'Using {"latest" if args.l else "first"} started EVE process with PID: {process_id}')
 
-    bot = LocalMonitorBot(monitor_character=args.m, process_id=pid)
+    ui_tree_root_address = None
+    mem_read_output_file = f'tmp/mem-read-{uuid.uuid5(uuid.NAMESPACE_URL, args.c)}.json'
 
-    bot.run()
+    config_file_path = f'config/{args.c}.json'
+    with open(config_file_path) as f:
+        config = json.load(f)
+    bots = [
+        LocalMonitorBot(config)
+    ]
+
+    last_success_time = time.time()
+
+    logger.info('Start bots. Detecting UI tree root might take a couple of minutes...')
+    while True:
+        all_bots_succeeded = True
+
+        if time.time() - last_success_time > 30:
+            sound.alarm(3)
+            logger.warning(f'Monitor is down. Last scan: {time.ctime(last_success_time)} PST')
+
+        try:
+            ui_tree = __read_ui_tree(process_id, mem_read_output_file, ui_tree_root_address)
+            if not ui_tree_root_address:
+                ui_tree_root_address = ui_tree.root_address
+                logger.info(f'Detected UI tree root: {ui_tree_root_address}.')
+
+            for bot in bots:
+                try:
+                    bot.run(ui_tree)
+                except Exception as e:
+                    logger.warning(f'Bot: {type(bot)} failed execution: {str(e)}')
+                    all_bots_succeeded = False
+
+            if all_bots_succeeded:
+                last_success_time = time.time()
+        except Exception as e:
+            logger.warning(f'Bot execution failed!', e)
+
+        time.sleep(3)
