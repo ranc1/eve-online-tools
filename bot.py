@@ -1,4 +1,5 @@
 import argparse
+import importlib
 import json
 import logging
 import os
@@ -6,13 +7,11 @@ import subprocess
 import sys
 import time
 import uuid
-import importlib
 
 import psutil
 
 import lib.sound_module as sound
 import lib.user_interface_parser as parser
-from bots.local_monitor_bot import LocalMonitorBot
 from lib.user_interface_parser import UiTree
 
 # Configure logging root
@@ -84,9 +83,13 @@ if __name__ == '__main__':
         config = json.load(f)
 
     bots = _initialize_bots(config)
+
+    if not bots:
+        raise RuntimeError('No bot is configured!')
+
     logger.info(f'Starting bots: {[type(bot).__name__ for bot in bots]}...')
 
-    logger.info('Detecting UI tree root might take a couple of minutes...')
+    logger.info('Detecting UI tree root might take a few minutes...')
     last_success_time = time.time()
     while True:
         all_bots_succeeded = True

@@ -26,9 +26,10 @@ class LocalMonitorBot:
                     self.previous_hostiles = hostiles
                     self.consecutive_alarm_count = 0
 
-                logger.warning(f'{hostiles}. Consecutive alarms: {self.consecutive_alarm_count}')
-                if self.consecutive_alarm_count < 30:
-                    sound.alarm(2)
+                if self.consecutive_alarm_count < 20:
+                    sound.play_file('classic_alarm.wav')
+                    if self.consecutive_alarm_count < 1:
+                        logger.warning(f'{hostiles}.')
             else:
                 self.consecutive_alarm_count = 0
         else:

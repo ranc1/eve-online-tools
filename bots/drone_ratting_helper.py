@@ -2,7 +2,7 @@ from lib.user_interface_parser import UiTree
 import lib.sound_module as sound
 import logging
 
-logger = logging.getLogger('local-monitor-bots')
+logger = logging.getLogger('drone-ratting-helper')
 logger.setLevel(logging.INFO)
 
 
