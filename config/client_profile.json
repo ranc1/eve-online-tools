@@ -1,3 +1,16 @@
 {
-  "character": "User A"
+  "local_monitor_bot.LocalMonitorBot": {
+    "Character": "User A",
+    "GoodStandingPattern": [
+      "good standing",
+      "excellent standing",
+      "is in your"
+    ]
+  },
+  "drone_ratting_helper.DroneRattingHelper": {
+    "OverviewColumn": "Name",
+    "TargetsToAlarm": [
+      "npc full name"
+    ]
+  }
 }

@@ -1,14 +1,7 @@
 import logging
 
 import lib.sound_module as sound
-
-GOOD_STANDING_PATTERN = [
-        'good standing',
-        'excellent standing',
-        'is in your',
-        '所属',
-        '良好',
-        '優良']
+from lib.user_interface_parser import UiTree
 
 logger = logging.getLogger('local-monitor-bots')
 logger.setLevel(logging.INFO)
@@ -16,11 +9,12 @@ logger.setLevel(logging.INFO)
 
 class LocalMonitorBot:
     def __init__(self, config: dict):
-        self.monitor_character = config['character']
+        self.monitor_character = config['Character']
+        self.good_standing_pattern = config['GoodStandingPattern']
         self.consecutive_alarm_count = 0
         self.previous_hostiles = []
 
-    def run(self, ui_tree):
+    def run(self, ui_tree: UiTree):
         local_chat = self.__get_local_chat(ui_tree.chat_windows)
 
         if local_chat:
@@ -45,7 +39,7 @@ class LocalMonitorBot:
             return False
         else:
             standing = user['standing']
-            return not standing or not any(pattern in standing.lower() for pattern in GOOD_STANDING_PATTERN)
+            return not standing or not any(pattern in standing.lower() for pattern in self.good_standing_pattern)
 
     @staticmethod
     def __get_local_chat(chat_windows):

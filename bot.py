@@ -6,6 +6,7 @@ import subprocess
 import sys
 import time
 import uuid
+import importlib
 
 import psutil
 
@@ -46,6 +47,16 @@ def __read_ui_tree(pid: int, output_file: str, root_address=None) -> UiTree:
         raise ex
 
 
+def _initialize_bots(bot_config: dict) -> list:
+    bots_in_config = []
+    for bot_name, bot_config in bot_config.items():
+        [module_name, class_name] = bot_name.split('.')
+        bot_class = getattr(importlib.import_module(f'bots.{module_name}'), class_name)
+        bots_in_config.append(bot_class(bot_config))
+
+    return bots_in_config
+
+
 if __name__ == '__main__':
     # Set working directory to current file dir
     os.chdir(sys.path[0])
@@ -71,13 +82,12 @@ if __name__ == '__main__':
     config_file_path = f'config/{args.c}.json'
     with open(config_file_path) as f:
         config = json.load(f)
-    bots = [
-        LocalMonitorBot(config)
-    ]
 
+    bots = _initialize_bots(config)
+    logger.info(f'Starting bots: {[type(bot).__name__ for bot in bots]}...')
+
+    logger.info('Detecting UI tree root might take a couple of minutes...')
     last_success_time = time.time()
-
-    logger.info('Start bots. Detecting UI tree root might take a couple of minutes...')
     while True:
         all_bots_succeeded = True
 
@@ -95,7 +105,7 @@ if __name__ == '__main__':
                 try:
                     bot.run(ui_tree)
                 except Exception as e:
-                    logger.warning(f'Bot: {type(bot)} failed execution: {str(e)}')
+                    logger.warning(f'Bot: {type(bot).__name__} failed execution: {str(e)}')
                     all_bots_succeeded = False
 
             if all_bots_succeeded:
