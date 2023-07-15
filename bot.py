@@ -37,16 +37,16 @@ def __read_ui_tree(pid: int, output_file: str, root_address=None) -> UiTree:
 
     mem_read_process = None
     try:
-        mem_read_process = subprocess.run(command, shell=True, stdout=subprocess.PIPE)
+        mem_read_process = subprocess.run(command, shell=True, capture_output=True, text=True)
         mem_read_process.check_returncode()
 
         return parser.parse_memory_read_to_ui_tree(output_file)
     except subprocess.CalledProcessError as ex:
-        logger.error(f'Failed to run memory reader: {mem_read_process.stdout}')
+        logger.error(f'Failed to run memory reader: {mem_read_process.stderr}')
         raise ex
 
 
-def _initialize_bots(bot_config: dict) -> list:
+def __initialize_bots(bot_config: dict) -> list:
     bots_in_config = []
     for bot_name, bot_config in bot_config.items():
         [module_name, class_name] = bot_name.split('.')
@@ -82,7 +82,7 @@ if __name__ == '__main__':
     with open(config_file_path) as f:
         config = json.load(f)
 
-    bots = _initialize_bots(config)
+    bots = __initialize_bots(config)
 
     if not bots:
         raise RuntimeError('No bot is configured!')
@@ -114,6 +114,6 @@ if __name__ == '__main__':
             if all_bots_succeeded:
                 last_success_time = time.time()
         except Exception as e:
-            logger.warning(f'Bot execution failed!', e)
+            logger.exception(f'Bot execution failed! {str(e)}')
 
         time.sleep(3)

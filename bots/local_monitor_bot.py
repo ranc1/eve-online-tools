@@ -1,7 +1,7 @@
 import logging
 
 import lib.sound_module as sound
-from lib.user_interface_parser import UiTree
+from models.data_models import UiTree, ChatWindow, ChatUserEntity
 
 logger = logging.getLogger('local-monitor-bots')
 logger.setLevel(logging.INFO)
@@ -18,7 +18,7 @@ class LocalMonitorBot:
         local_chat = self.__get_local_chat(ui_tree.chat_windows)
 
         if local_chat:
-            hostiles = list(filter(self.__is_hostile, local_chat['userlist']))
+            hostiles = list(filter(self.__is_hostile, local_chat.user_list))
             if len(hostiles) > 0:
                 if self.previous_hostiles == hostiles:
                     self.consecutive_alarm_count += 1
@@ -26,7 +26,7 @@ class LocalMonitorBot:
                     self.previous_hostiles = hostiles
                     self.consecutive_alarm_count = 0
 
-                if self.consecutive_alarm_count < 20:
+                if self.consecutive_alarm_count < 10:
                     sound.play_file('classic_alarm.wav')
                     if self.consecutive_alarm_count < 1:
                         logger.warning(f'{hostiles}.')
@@ -35,14 +35,14 @@ class LocalMonitorBot:
         else:
             raise RuntimeError('local chat not found!')
 
-    def __is_hostile(self, user):
-        if user['name'] == self.monitor_character:
+    def __is_hostile(self, user: ChatUserEntity):
+        if user.name == self.monitor_character:
             return False
         else:
-            standing = user['standing']
+            standing = user.standing
             return not standing or not any(pattern in standing.lower() for pattern in self.good_standing_pattern)
 
     @staticmethod
-    def __get_local_chat(chat_windows):
-        local_chat = list(filter(lambda chat: chat['name'].endswith('_local'), chat_windows))
+    def __get_local_chat(chat_windows: list[ChatWindow]) -> ChatWindow:
+        local_chat = list(filter(lambda chat: chat.name.endswith('_local'), chat_windows))
         return local_chat[0] if local_chat else None

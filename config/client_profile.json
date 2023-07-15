@@ -11,6 +11,7 @@
     "OverviewColumn": "Name",
     "TargetsToAlarm": [
       "npc full name"
-    ]
+    ],
+    "DronesIdleText": "Idle"
   }
 }
