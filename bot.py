@@ -113,7 +113,7 @@ if __name__ == '__main__':
 
             if all_bots_succeeded:
                 last_success_time = time.time()
-        except Exception as e:
-            logger.exception(f'Bot execution failed! {str(e)}')
+        except (Exception,):
+            logger.exception('Bot execution failed!')
 
         time.sleep(3)
