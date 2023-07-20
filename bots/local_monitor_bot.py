@@ -17,7 +17,7 @@ class LocalMonitorBot:
     def run(self, ui_tree: UiTree):
         local_chat = self.__get_local_chat(ui_tree.chat_windows)
 
-        if local_chat:
+        if local_chat and local_chat.user_list:
             hostiles = list(filter(self.__is_hostile, local_chat.user_list))
             if len(hostiles) > 0:
                 if self.previous_hostiles == hostiles:

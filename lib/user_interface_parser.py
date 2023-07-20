@@ -163,21 +163,25 @@ def __parse_chat_windows(chat_window_stacks: list[dict]) -> list[ChatWindow]:
 
 
 def __parse_user_lists_from_chat(chat_ui_node: dict) -> list[ChatUserEntity]:
-    user_list_node = __filter_nodes(
-        chat_ui_node, lambda node: 'userlist' == __get_text_from_dict_entries(node, NAME))[0]
-    user_entry_nodes = __filter_nodes(
-        user_list_node, lambda node: node[TYPE_NAME] in ('XmppChatSimpleUserEntry', 'XmppChatUserEntry'))
-
+    user_list_nodes = __filter_nodes(
+        chat_ui_node, lambda node: 'userlist' == __get_text_from_dict_entries(node, NAME))
     user_entities = []
-    for user_entry_node in user_entry_nodes:
-        name_texts = __get_all_contained_text(user_entry_node)
-        if name_texts:
-            user_entity = ChatUserEntity(
-                name=max(name_texts, key=lambda node_text: len(node_text[0]))[0],
-                standing=__get_standing_icon_hint(user_entry_node)
-            )
-            user_entities.append(user_entity)
 
+    if user_list_nodes:
+        user_list_node = user_list_nodes[0]
+        user_entry_nodes = __filter_nodes(
+            user_list_node, lambda node: node[TYPE_NAME] in ('XmppChatSimpleUserEntry', 'XmppChatUserEntry'))
+
+        user_entities = []
+        for user_entry_node in user_entry_nodes:
+            name_texts = __get_all_contained_text(user_entry_node)
+            if name_texts:
+                user_entity = ChatUserEntity(
+                    name=max(name_texts, key=lambda node_text: len(node_text[0]))[0],
+                    standing=__get_standing_icon_hint(user_entry_node)
+                )
+                user_entities.append(user_entity)
+                
     return user_entities
 
 
