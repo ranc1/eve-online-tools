@@ -168,10 +168,17 @@ def __parse_user_lists_from_chat(chat_ui_node: dict) -> list[ChatUserEntity]:
     user_entry_nodes = __filter_nodes(
         user_list_node, lambda node: node[TYPE_NAME] in ('XmppChatSimpleUserEntry', 'XmppChatUserEntry'))
 
-    return list(map(lambda node: ChatUserEntity(
-        name=max(__get_all_contained_text(node), key=lambda node_text: len(node_text[0]))[0],
-        standing=__get_standing_icon_hint(node)
-    ), user_entry_nodes))
+    user_entities = []
+    for user_entry_node in user_entry_nodes:
+        name_texts = __get_all_contained_text(user_entry_node)
+        if name_texts:
+            user_entity = ChatUserEntity(
+                name=max(name_texts, key=lambda node_text: len(node_text[0]))[0],
+                standing=__get_standing_icon_hint(user_entry_node)
+            )
+            user_entities.append(user_entity)
+
+    return user_entities
 
 
 def __get_standing_icon_hint(user_entry_node: dict) -> str:
