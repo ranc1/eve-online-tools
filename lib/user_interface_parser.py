@@ -252,7 +252,6 @@ def __get_children_with_display_region(parent: dict) -> list:
                 display_region.x += parent_display_region.x
                 display_region.y += parent_display_region.y
                 child[TOTAL_DISPLAY_REGION] = display_region
-                child.pop('otherDictEntriesKeys', None)
 
                 children_results.append(child)
 

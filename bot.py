@@ -15,7 +15,7 @@ import lib.user_interface_parser as parser
 from lib.user_interface_parser import UiTree
 
 # Configure logging root
-logging.basicConfig()
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s')
 
 logger = logging.getLogger('bot-master')
 logger.setLevel(logging.INFO)
@@ -31,7 +31,8 @@ def __get_process(is_last: bool) -> int:
 def __read_ui_tree(pid: int, output_file: str, root_address=None) -> UiTree:
     os.makedirs('tmp', exist_ok=True)
 
-    command = f'"mem_reader/read-memory-64-bit.exe" read-memory-eve-online --pid {pid} --output-file {output_file}'
+    read_mem_command = '"mem_reader/read-memory-64-bit.exe" read-memory-eve-online'
+    command = f'{read_mem_command} --remove-other-dict-entries --pid {pid} --output-file {output_file}'
     if root_address:
         command += f' --root-address {root_address}'
 
