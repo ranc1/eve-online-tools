@@ -36,15 +36,23 @@ def __read_ui_tree(pid: int, output_file: str, root_address=None) -> UiTree:
     if root_address:
         command += f' --root-address {root_address}'
 
+    current_attempts = 0
+    max_attempts = 2
     mem_read_process = None
-    try:
-        mem_read_process = subprocess.run(command, shell=True, capture_output=True, text=True)
-        mem_read_process.check_returncode()
+    while current_attempts < max_attempts:
+        current_attempts += 1
+        try:
+            mem_read_process = subprocess.run(command, shell=True, capture_output=True, text=True)
+            mem_read_process.check_returncode()
 
-        return parser.parse_memory_read_to_ui_tree(output_file)
-    except subprocess.CalledProcessError as ex:
-        logger.error(f'Failed to run memory reader: {mem_read_process.stderr}')
-        raise ex
+            return parser.parse_memory_read_to_ui_tree(output_file)
+        except subprocess.CalledProcessError as ex:
+            if current_attempts == max_attempts:
+                logger.error(f'Failed to run memory reader: {mem_read_process.stderr}')
+                raise ex
+            else:
+                logger.warning('Failed to read UI tree from memory.')
+                time.sleep(1)
 
 
 def __initialize_bots(bot_config: dict) -> list:

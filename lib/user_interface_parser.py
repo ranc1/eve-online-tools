@@ -20,11 +20,11 @@ def parse_memory_read_to_ui_tree(file_path: str):
         return __parse_ui_tree_json(ui_tree_root)
 
 
-# use iteration to avoid exceeding recursion limit.
 def __filter_nodes(ui_tree: dict, node_condition, parent_only: bool = True):
     nodes_to_check = [ui_tree]
     results = []
 
+    # use iteration to avoid exceeding recursion limit.
     while nodes_to_check:
         node = nodes_to_check.pop(0)
 
@@ -44,6 +44,7 @@ def __parse_ui_tree_json(ui_tree_root: dict) -> UiTree:
     chat_window_stacks = []
     overview_window = None
     drones_window = None
+    ship_ui = None
 
     while nodes_to_check:
         node = nodes_to_check.pop(0)
@@ -54,6 +55,8 @@ def __parse_ui_tree_json(ui_tree_root: dict) -> UiTree:
             overview_window = node
         elif node[TYPE_NAME] == 'DronesWindow':
             drones_window = node
+        elif node[TYPE_NAME] == 'ShipUI':
+            ship_ui = node
         else:
             nodes_to_check.extend(__get_children_with_display_region(node))
 
@@ -65,6 +68,8 @@ def __parse_ui_tree_json(ui_tree_root: dict) -> UiTree:
         ui_tree.overview = __parse_overview(overview_window)
     if drones_window:
         ui_tree.drones = __parse_drones_window(drones_window)
+    if ship_ui:
+        ui_tree.ship_ui = __parse_ship_ui(ship_ui)
 
     return ui_tree
 
@@ -204,9 +209,11 @@ def __parse_drones_window(drones_window: dict) -> DroneList:
         if entry_texts:
             drone = Drone(
                 text=entry_texts[0][0],
-                shield=__parse_drone_gauge_percentage(entry, 'shieldGauge'),
-                armor=__parse_drone_gauge_percentage(entry, 'armorGauge'),
-                structure=__parse_drone_gauge_percentage(entry, 'structGauge')
+                hp_percentages=HitPointsPercentages(
+                    shield=__parse_drone_gauge_percentage(entry, 'shieldGauge'),
+                    armor=__parse_drone_gauge_percentage(entry, 'armorGauge'),
+                    structure=__parse_drone_gauge_percentage(entry, 'structGauge')
+                )
             )
 
             if 'InBay' in entry[TYPE_NAME]:
@@ -226,6 +233,44 @@ def __parse_drone_gauge_percentage(entry: dict, gauge_name: str) -> float:
     dmg = damage_bar[TOTAL_DISPLAY_REGION].width
     return (hp - dmg) / hp * 100 if hp > 0 else 0
 # Drones parsing functions end
+
+
+# Ship UI parsing functions start
+def __parse_ship_ui(ship_ui: dict) -> ShipUI:
+    return ShipUI(
+        capacitor_percentage=__get_ship_capacitor(ship_ui),
+        speed_text=__get_ship_speed(ship_ui),
+        hp_percentages=__get_ship_hit_points(ship_ui)
+    )
+
+
+def __get_ship_hit_points(ship_ui: dict) -> HitPointsPercentages:
+    shield = __get_last_value_from_gauge('shieldGauge', ship_ui)
+    armor = __get_last_value_from_gauge('armorGauge', ship_ui)
+    structure = __get_last_value_from_gauge('structureGauge', ship_ui)
+    return HitPointsPercentages(
+        shield=shield, armor=armor, structure=structure
+    ) if shield and armor and structure else None
+
+
+def __get_ship_speed(ship_ui: dict) -> str:
+    speed = __filter_nodes(ship_ui, lambda node: node[TYPE_NAME] == 'SpeedGauge')[0]
+    speed_text = __get_all_contained_text(speed)
+    return speed_text[0][0] if speed_text else None
+
+
+def __get_ship_capacitor(ship_ui: dict) -> float:
+    capacitor_container = __filter_nodes(ship_ui, lambda node: node[TYPE_NAME] == 'CapacitorContainer')[0]
+    p_marks = __filter_nodes(capacitor_container, lambda node: __get_text_from_dict_entries(node, NAME) == 'pmark')
+    lit_p_marks = list(filter(lambda color: color.a < 20, map(__get_color_from_node, p_marks)))
+    return len(lit_p_marks) / len(p_marks) * 100
+
+
+def __get_last_value_from_gauge(gauge_name: str, ship_ui_node: dict) -> float:
+    gauge_node = __filter_nodes(ship_ui_node, lambda node: __get_text_from_dict_entries(node, NAME) == gauge_name)[0]
+    value = gauge_node[ENTRIES_OF_INTEREST].get('_lastValue', None)
+    return value * 100 if value else None
+# Ship UI parsing functions end
 
 
 # Utility methods
@@ -249,6 +294,13 @@ def __get_all_contained_text(root_node) -> [(str, dict)]:
         results.append((text, node))
 
     return results
+
+
+def __get_color_from_node(node: dict) -> ColorPercents:
+    color = node[ENTRIES_OF_INTEREST].get('_color', None)
+    return ColorPercents(
+        a=color['aPercent'], r=color['rPercent'], g=color['gPercent'], b=color['bPercent']
+    ) if color else ColorPercents
 
 
 def __get_children_with_display_region(parent: dict) -> list:

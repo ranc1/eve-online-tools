@@ -2,11 +2,16 @@ from dataclasses import dataclass, field
 
 
 @dataclass
+class HitPointsPercentages:
+    shield: float = 0
+    armor: float = 0
+    structure: float = 0
+
+
+@dataclass
 class Drone:
     text: str = None
-    shield: float = None
-    armor: float = None
-    structure: float = None
+    hp_percentages: HitPointsPercentages = HitPointsPercentages
 
 
 @dataclass
@@ -48,11 +53,27 @@ class ChatWindow:
 
 
 @dataclass
+class ColorPercents:
+    a: float = 0
+    r: float = 0
+    g: float = 0
+    b: float = 0
+
+
+@dataclass
+class ShipUI:
+    capacitor_percentage: float = 0
+    speed_text: str = None
+    hp_percentages: HitPointsPercentages = HitPointsPercentages
+
+
+@dataclass
 class UiTree:
     root_address: int = None
     chat_windows: list[ChatWindow] = field(default_factory=list)
     overview: list[OverviewEntry] = field(default_factory=list)
     drones: DroneList = DroneList()
+    ship_ui: ShipUI = None
 
 
 @dataclass
