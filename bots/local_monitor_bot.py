@@ -44,5 +44,5 @@ class LocalMonitorBot:
 
     @staticmethod
     def __get_local_chat(chat_windows: list[ChatWindow]) -> ChatWindow:
-        local_chat = list(filter(lambda chat: chat.name.endswith('_local'), chat_windows))
+        local_chat = [chat for chat in chat_windows if chat.name.endswith('_local')]
         return local_chat[0] if local_chat else None

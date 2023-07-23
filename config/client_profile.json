@@ -12,6 +12,8 @@
     "TargetsToAlarm": [
       "npc full name"
     ],
-    "DronesIdleText": "Idle"
+    "DronesIdleText": "Idle",
+    "HpAlarmType": "shield",
+    "HpAlarmThreshold": 30
   }
 }

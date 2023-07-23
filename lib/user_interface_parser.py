@@ -21,11 +21,10 @@ def parse_memory_read_to_ui_tree(file_path: str) -> UiTree:
 
 
 def __parse_ui_tree_json(ui_tree_root: dict) -> UiTree:
-    nodes_to_check = [ui_tree_root]
-
     ui_tree = UiTree()
     ui_tree.root_address = ui_tree_root[ADDRESS]
 
+    nodes_to_check = [ui_tree_root]
     while nodes_to_check:
         node = nodes_to_check.pop(0)
 
@@ -55,7 +54,7 @@ def __parse_overview(overview_window: dict) -> list[OverviewEntry]:
 
     for entry in entries:
         # parse text info.
-        parsed_entry_info = {}
+        entry_info = {}
         for (entry_text, entry_node) in __get_all_contained_text(entry):
             entry_display_region: DisplayRegion = entry_node[TOTAL_DISPLAY_REGION]
             entry_x = entry_display_region.x
@@ -66,7 +65,7 @@ def __parse_overview(overview_window: dict) -> list[OverviewEntry]:
                 header_width = header_display_region.width
 
                 if header_x < entry_x + 3 and header_x + header_width > entry_x + entry_width - 3:
-                    parsed_entry_info[header_text] = entry_text
+                    entry_info[header_text] = entry_text
                     break
 
         indicator_texts = __parse_space_object_icon_texts(entry)
@@ -85,7 +84,8 @@ def __parse_overview(overview_window: dict) -> list[OverviewEntry]:
             web=any('is webifying me' in text for text in icon_texts)
         )
 
-        parsed_entries.append(OverviewEntry(info=parsed_entry_info, indicators=indicators, icon_colors=__get_entry_icon_color(entry)))
+        parsed_entries.append(
+            OverviewEntry(info=entry_info, indicators=indicators, icon_colors=__get_entry_icon_color(entry)))
     return parsed_entries
 
 
@@ -101,7 +101,7 @@ def __parse_space_object_icon_texts(entry: dict) -> list[str]:
     if space_object_icon:
         indicator_nodes = __filter_nodes(space_object_icon[0], lambda node: '_name' in node[ENTRIES_OF_INTEREST],
                                          parent_only=False)
-        return list(map(lambda node: __get_text_from_dict_entries(node, NAME), indicator_nodes))
+        return [__get_text_from_dict_entries(node, NAME) for node in indicator_nodes]
     else:
         return []
 
@@ -118,7 +118,7 @@ def __parse_right_aligned_icons(entry: dict) -> list[str]:
     if right_aligned_icons:
         # Should only be at most 1 right_aligned_icons container for each entry
         icon_text_nodes = __filter_nodes(right_aligned_icons[0], lambda node: '_hint' in node[ENTRIES_OF_INTEREST])
-        icon_texts.extend(list(map(lambda node: __get_text_from_dict_entries(node, HINT).lower(), icon_text_nodes)))
+        icon_texts.extend([__get_text_from_dict_entries(node, HINT).lower() for node in icon_text_nodes])
 
     return icon_texts
 
@@ -266,8 +266,9 @@ def __get_last_value_from_gauge(gauge_name: str, ship_ui_node: dict) -> float:
 # Utility methods
 def __filter_nodes(ui_tree: dict, node_condition, parent_only: bool = True) -> list[dict]:
     """
-    Collect the sub-trees, which satisfies the node_condition, from the root ui_tree. By default, the function only returns the parent sub-trees, then
-    stops searching their children. When parent_only is False, the function will return the parent sub-tree, but keep searching their children.
+    Collect the sub-trees, which satisfies the node_condition, from the root ui_tree. By default, the function only
+    returns the parent sub-trees, then stops searching their children. When parent_only is False, the function will
+    return the parent sub-tree, but keep searching their children.
     :param ui_tree: Root of the UI tree or sub-tree to start the search.
     :param node_condition: Conditions to collect the sub-trees.
     :param parent_only: Whether to stop the search at the parent sub-tree.

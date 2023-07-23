@@ -9,5 +9,5 @@ def alarm(count: int) -> None:
 
 
 def play_file(file_name: str) -> None:
-    file_path = f'resource/{file_name}'
+    file_path = f'resources/{file_name}'
     winsound.PlaySound(file_path, winsound.SND_ASYNC)
