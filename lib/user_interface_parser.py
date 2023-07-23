@@ -12,7 +12,7 @@ NAME = '_name'
 HINT = '_hint'
 
 
-def parse_memory_read_to_ui_tree(file_path: str):
+def parse_memory_read_to_ui_tree(file_path: str) -> UiTree:
     with open(file_path) as f:
         ui_tree_root = json.load(f)
         ui_tree_root[TOTAL_DISPLAY_REGION] = __get_display_region(ui_tree_root)
@@ -20,56 +20,25 @@ def parse_memory_read_to_ui_tree(file_path: str):
         return __parse_ui_tree_json(ui_tree_root)
 
 
-def __filter_nodes(ui_tree: dict, node_condition, parent_only: bool = True):
-    nodes_to_check = [ui_tree]
-    results = []
-
-    # use iteration to avoid exceeding recursion limit.
-    while nodes_to_check:
-        node = nodes_to_check.pop(0)
-
-        if node_condition(node):
-            results.append(node)
-
-            if not parent_only:
-                nodes_to_check.extend(__get_children_with_display_region(node))
-        else:
-            nodes_to_check.extend(__get_children_with_display_region(node))
-
-    return results
-
-
 def __parse_ui_tree_json(ui_tree_root: dict) -> UiTree:
     nodes_to_check = [ui_tree_root]
-    chat_window_stacks = []
-    overview_window = None
-    drones_window = None
-    ship_ui = None
+
+    ui_tree = UiTree()
+    ui_tree.root_address = ui_tree_root[ADDRESS]
 
     while nodes_to_check:
         node = nodes_to_check.pop(0)
 
         if node[TYPE_NAME] == 'ChatWindowStack':
-            chat_window_stacks.append(node)
+            ui_tree.chat_windows.append(__parse_chat_window(node))
         elif node[TYPE_NAME] == 'OverviewWindow':
-            overview_window = node
+            ui_tree.overview = __parse_overview(node)
         elif node[TYPE_NAME] == 'DronesWindow':
-            drones_window = node
+            ui_tree.drones = __parse_drones_window(node)
         elif node[TYPE_NAME] == 'ShipUI':
-            ship_ui = node
+            ui_tree.ship_ui = __parse_ship_ui(node)
         else:
             nodes_to_check.extend(__get_children_with_display_region(node))
-
-    ui_tree = UiTree()
-    ui_tree.root_address = ui_tree_root[ADDRESS]
-    if chat_window_stacks:
-        ui_tree.chat_windows = __parse_chat_windows(chat_window_stacks)
-    if overview_window:
-        ui_tree.overview = __parse_overview(overview_window)
-    if drones_window:
-        ui_tree.drones = __parse_drones_window(drones_window)
-    if ship_ui:
-        ui_tree.ship_ui = __parse_ship_ui(ship_ui)
 
     return ui_tree
 
@@ -116,7 +85,7 @@ def __parse_overview(overview_window: dict) -> list[OverviewEntry]:
             web=any('is webifying me' in text for text in icon_texts)
         )
 
-        parsed_entries.append(OverviewEntry(info=parsed_entry_info, indicators=indicators))
+        parsed_entries.append(OverviewEntry(info=parsed_entry_info, indicators=indicators, icon_colors=__get_entry_icon_color(entry)))
     return parsed_entries
 
 
@@ -152,19 +121,24 @@ def __parse_right_aligned_icons(entry: dict) -> list[str]:
         icon_texts.extend(list(map(lambda node: __get_text_from_dict_entries(node, HINT).lower(), icon_text_nodes)))
 
     return icon_texts
+
+
+def __get_entry_icon_color(entry: dict):
+    icon_node = __filter_nodes(entry, lambda node: node[TYPE_NAME] == 'SpaceObjectIcon')[0]
+    sprite = __filter_nodes(icon_node, lambda node: __get_text_from_dict_entries(node, NAME) == 'iconSprite')[0]
+    return __get_color_from_node(sprite)
+
 # Overview parsing functions end
 
 
 # Chat parsing functions start
-def __parse_chat_windows(chat_window_stacks: list[dict]) -> list[ChatWindow]:
-    chat_window_nodes = list(map(
-        lambda ui_node: __filter_nodes(ui_node, lambda node: node[TYPE_NAME] == 'XmppChatWindow')[0],
-        chat_window_stacks))
+def __parse_chat_window(chat_window_stack: dict) -> ChatWindow:
+    chat_window_node = __filter_nodes(chat_window_stack, lambda node: node[TYPE_NAME] == 'XmppChatWindow')[0]
 
-    return list(map(lambda node: ChatWindow(
-        name=__get_text_from_dict_entries(node, NAME),
-        user_list=__parse_user_lists_from_chat(node)
-    ), chat_window_nodes))
+    return ChatWindow(
+        name=__get_text_from_dict_entries(chat_window_node, NAME),
+        user_list=__parse_user_lists_from_chat(chat_window_node)
+    )
 
 
 def __parse_user_lists_from_chat(chat_ui_node: dict) -> list[ChatUserEntity]:
@@ -209,7 +183,7 @@ def __parse_drones_window(drones_window: dict) -> DroneList:
         if entry_texts:
             drone = Drone(
                 text=entry_texts[0][0],
-                hp_percentages=HitPointsPercentages(
+                hp_percentages=HitPointPercentages(
                     shield=__parse_drone_gauge_percentage(entry, 'shieldGauge'),
                     armor=__parse_drone_gauge_percentage(entry, 'armorGauge'),
                     structure=__parse_drone_gauge_percentage(entry, 'structGauge')
@@ -240,20 +214,21 @@ def __parse_ship_ui(ship_ui: dict) -> ShipUI:
     return ShipUI(
         capacitor_percentage=__get_ship_capacitor(ship_ui),
         speed_text=__get_ship_speed(ship_ui),
-        hp_percentages=__get_ship_hit_points(ship_ui)
+        hp_percentages=__get_ship_hit_points(ship_ui),
+        module_buttons=__parse_module_buttons(ship_ui)
     )
 
 
-def __get_ship_hit_points(ship_ui: dict) -> HitPointsPercentages:
+def __get_ship_hit_points(ship_ui: dict) -> HitPointPercentages:
     shield = __get_last_value_from_gauge('shieldGauge', ship_ui)
     armor = __get_last_value_from_gauge('armorGauge', ship_ui)
     structure = __get_last_value_from_gauge('structureGauge', ship_ui)
-    return HitPointsPercentages(
+    return HitPointPercentages(
         shield=shield, armor=armor, structure=structure
     ) if shield and armor and structure else None
 
 
-def __get_ship_speed(ship_ui: dict) -> str:
+def __get_ship_speed(ship_ui: dict) -> Optional[str]:
     speed = __filter_nodes(ship_ui, lambda node: node[TYPE_NAME] == 'SpeedGauge')[0]
     speed_text = __get_all_contained_text(speed)
     return speed_text[0][0] if speed_text else None
@@ -262,8 +237,23 @@ def __get_ship_speed(ship_ui: dict) -> str:
 def __get_ship_capacitor(ship_ui: dict) -> float:
     capacitor_container = __filter_nodes(ship_ui, lambda node: node[TYPE_NAME] == 'CapacitorContainer')[0]
     p_marks = __filter_nodes(capacitor_container, lambda node: __get_text_from_dict_entries(node, NAME) == 'pmark')
-    lit_p_marks = list(filter(lambda color: color.a < 20, map(__get_color_from_node, p_marks)))
+    lit_p_marks = [color for color in map(__get_color_from_node, p_marks) if color.a < 20]
     return len(lit_p_marks) / len(p_marks) * 100
+
+
+def __parse_module_buttons(ship_ui: dict) -> list[ModuleButton]:
+    ship_slots = __filter_nodes(ship_ui, lambda node: node[TYPE_NAME] == 'ShipSlot')
+    buttons = []
+    for slot in ship_slots:
+        module = __filter_nodes(slot, lambda node: node[TYPE_NAME] == 'ModuleButton')[0]
+        slot_sprite = __filter_nodes(slot, lambda node: node[TYPE_NAME] == 'Sprite')
+
+        buttons.append(ModuleButton(
+            is_active=module[ENTRIES_OF_INTEREST].get('ramp_active', False),
+            is_busy=any([__get_text_from_dict_entries(sprite, NAME) == 'busy' for sprite in slot_sprite]),
+            display_region=module[TOTAL_DISPLAY_REGION]))
+
+    return buttons
 
 
 def __get_last_value_from_gauge(gauge_name: str, ship_ui_node: dict) -> float:
@@ -274,11 +264,38 @@ def __get_last_value_from_gauge(gauge_name: str, ship_ui_node: dict) -> float:
 
 
 # Utility methods
+def __filter_nodes(ui_tree: dict, node_condition, parent_only: bool = True) -> list[dict]:
+    """
+    Collect the sub-trees, which satisfies the node_condition, from the root ui_tree. By default, the function only returns the parent sub-trees, then
+    stops searching their children. When parent_only is False, the function will return the parent sub-tree, but keep searching their children.
+    :param ui_tree: Root of the UI tree or sub-tree to start the search.
+    :param node_condition: Conditions to collect the sub-trees.
+    :param parent_only: Whether to stop the search at the parent sub-tree.
+    :return: List of sub-trees.
+    """
+    nodes_to_check = [ui_tree]
+    results = []
+
+    # use iteration to avoid exceeding recursion limit.
+    while nodes_to_check:
+        node = nodes_to_check.pop(0)
+
+        if node_condition(node):
+            results.append(node)
+
+            if not parent_only:
+                nodes_to_check.extend(__get_children_with_display_region(node))
+        else:
+            nodes_to_check.extend(__get_children_with_display_region(node))
+
+    return results
+
+
 def __get_text_from_dict_entries(node: dict,  key: str) -> str:
     return node[ENTRIES_OF_INTEREST].get(key, '')
 
 
-def __get_all_contained_text(root_node) -> [(str, dict)]:
+def __get_all_contained_text(root_node) -> list[(str, dict)]:
     """
     Parse contained texts as a list from root_node and its children.
     :param root_node: Root
@@ -296,11 +313,11 @@ def __get_all_contained_text(root_node) -> [(str, dict)]:
     return results
 
 
-def __get_color_from_node(node: dict) -> ColorPercents:
+def __get_color_from_node(node: dict) -> ColorPercentages:
     color = node[ENTRIES_OF_INTEREST].get('_color', None)
-    return ColorPercents(
+    return ColorPercentages(
         a=color['aPercent'], r=color['rPercent'], g=color['gPercent'], b=color['bPercent']
-    ) if color else ColorPercents
+    ) if color else ColorPercentages
 
 
 def __get_children_with_display_region(parent: dict) -> list:

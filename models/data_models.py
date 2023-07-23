@@ -2,16 +2,32 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class HitPointsPercentages:
+class ColorPercentages:
+    a: float = 0
+    r: float = 0
+    g: float = 0
+    b: float = 0
+
+
+@dataclass
+class HitPointPercentages:
     shield: float = 0
     armor: float = 0
     structure: float = 0
 
 
 @dataclass
+class DisplayRegion:
+    x: float = None
+    y: float = None
+    width: float = None
+    height: float = None
+
+
+@dataclass
 class Drone:
     text: str = None
-    hp_percentages: HitPointsPercentages = HitPointsPercentages
+    hp_percentages: HitPointPercentages = HitPointPercentages
 
 
 @dataclass
@@ -38,6 +54,7 @@ class OverviewEntryIndicators:
 class OverviewEntry:
     info: dict = field(default_factory=dict)
     indicators: OverviewEntryIndicators = OverviewEntryIndicators()
+    icon_colors: ColorPercentages = ColorPercentages()
 
 
 @dataclass
@@ -53,18 +70,18 @@ class ChatWindow:
 
 
 @dataclass
-class ColorPercents:
-    a: float = 0
-    r: float = 0
-    g: float = 0
-    b: float = 0
+class ModuleButton:
+    is_active: bool = False
+    is_busy: bool = False
+    display_region: DisplayRegion = DisplayRegion
 
 
 @dataclass
 class ShipUI:
     capacitor_percentage: float = 0
     speed_text: str = None
-    hp_percentages: HitPointsPercentages = HitPointsPercentages
+    hp_percentages: HitPointPercentages = HitPointPercentages
+    module_buttons: list[ModuleButton] = field(default_factory=list)
 
 
 @dataclass
@@ -74,11 +91,3 @@ class UiTree:
     overview: list[OverviewEntry] = field(default_factory=list)
     drones: DroneList = DroneList()
     ship_ui: ShipUI = None
-
-
-@dataclass
-class DisplayRegion:
-    x: float = None
-    y: float = None
-    width: float = None
-    height: float = None
