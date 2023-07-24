@@ -71,5 +71,5 @@ class DroneRattingHelper:
 
     def __hp_alarm(self, overview: list[OverviewEntry], ship_ui: ShipUI) -> bool:
         being_attacked = any([entry for entry in overview if entry.indicators.attacking_me])
-        hp = getattr(ship_ui, self.hp_alarm_type)
+        hp = getattr(ship_ui.hp_percentages, self.hp_alarm_type)
         return being_attacked and hp < self.hp_alarm_threshold

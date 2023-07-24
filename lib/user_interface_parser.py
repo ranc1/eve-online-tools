@@ -223,9 +223,7 @@ def __get_ship_hit_points(ship_ui: dict) -> HitPointPercentages:
     shield = __get_last_value_from_gauge('shieldGauge', ship_ui)
     armor = __get_last_value_from_gauge('armorGauge', ship_ui)
     structure = __get_last_value_from_gauge('structureGauge', ship_ui)
-    return HitPointPercentages(
-        shield=shield, armor=armor, structure=structure
-    ) if shield and armor and structure else None
+    return HitPointPercentages(shield=shield, armor=armor, structure=structure)
 
 
 def __get_ship_speed(ship_ui: dict) -> Optional[str]:
