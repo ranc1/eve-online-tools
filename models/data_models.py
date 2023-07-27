@@ -55,6 +55,7 @@ class OverviewEntry:
     info: dict = field(default_factory=dict)
     indicators: OverviewEntryIndicators = OverviewEntryIndicators()
     icon_colors: ColorPercentages = ColorPercentages()
+    background_colors: ColorPercentages = ColorPercentages()
 
 
 @dataclass

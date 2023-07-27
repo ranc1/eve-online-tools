@@ -20,6 +20,7 @@ class DroneRattingHelper:
         self.consecutive_hp_alarm = 0
         self.last_drone_active_time = time.time()
         self.last_drone_in_bay_time = time.time()
+        self.consecutive_column_not_found = 0
 
     def run(self, ui_tree: UiTree):
         overview = ui_tree.overview
@@ -53,8 +54,8 @@ class DroneRattingHelper:
                 self.last_drone_in_bay_time = current_time
 
             # Low HP alarm
-            if self.__hp_alarm(overview, ship_ui=ui_tree.ship_ui):
-                if self.consecutive_hp_alarm < 5:
+            if ui_tree.ship_ui and self.__hp_alarm(overview, ship_ui=ui_tree.ship_ui):
+                if self.consecutive_hp_alarm < 3:
                     sound.play_file('hp_alarm.wav')
                     self.consecutive_hp_alarm += 1
             else:
@@ -65,7 +66,12 @@ class DroneRattingHelper:
                              for entry in overview if self.overview_key in entry.info]
 
         if not lowercase_entries:
-            raise RuntimeError(f'Column: {self.overview_key} is not visible on Overview window.')
+            # Overview entries may take time to load, if not found in 2 consecutive runs, raise error.
+            if self.consecutive_found_target < 1:
+                self.consecutive_found_target += 1
+            else:
+                self.consecutive_found_target = 0
+                raise RuntimeError(f'Column: {self.overview_key} is not visible on Overview window.')
 
         return [target for target in self.targets_to_alarm if target in lowercase_entries]
 

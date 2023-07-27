@@ -7,6 +7,7 @@ import subprocess
 import sys
 import time
 import uuid
+import shutil
 
 import psutil
 
@@ -74,6 +75,7 @@ if __name__ == '__main__':
     arg_parser.add_argument('-c', help='Bot configuration file name', required=True)
     arg_parser.add_argument('-p', help='Process ID. If not specified, use first EVE Online process')
     arg_parser.add_argument('-l', help='Use latest started process', action='store_true')
+    arg_parser.add_argument('-d', help='Save memory read to tmp/ folder when failure occurs', action='store_true')
 
     args = arg_parser.parse_args()
 
@@ -100,6 +102,10 @@ if __name__ == '__main__':
 
     logger.info('Detecting UI tree root might take a few minutes...')
     last_success_time = time.time()
+    debug_mode = args.d
+    if debug_mode:
+        logger.info('Debug mode enabled: Memory read will be saved if failure occurs.')
+
     while True:
         all_bots_succeeded = True
 
@@ -111,7 +117,7 @@ if __name__ == '__main__':
             ui_tree = __read_ui_tree(process_id, mem_read_output_file, ui_tree_root_address)
             if not ui_tree_root_address:
                 ui_tree_root_address = ui_tree.root_address
-                logger.info(f'Detected UI tree root: {ui_tree_root_address}.')
+                logger.info(f'Successfully found UI tree root: {ui_tree_root_address}. Bots running...')
 
             for bot in bots:
                 try:
@@ -119,10 +125,14 @@ if __name__ == '__main__':
                 except Exception as e:
                     logger.warning(f'Bot: {type(bot).__name__} failed execution: {str(e)}')
                     all_bots_succeeded = False
+                    if debug_mode:
+                        shutil.copy2(mem_read_output_file, f'tmp/debug-{time.time()}.json')
 
             if all_bots_succeeded:
                 last_success_time = time.time()
         except (Exception,):
             logger.exception('Bot execution failed!')
+            if debug_mode:
+                shutil.copy2(mem_read_output_file, f'tmp/debug-{time.time()}.json')
 
         time.sleep(3)
