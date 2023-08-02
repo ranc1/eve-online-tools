@@ -269,7 +269,8 @@ def __get_last_value_from_gauge(gauge_name: str, ship_ui_node: dict) -> Optional
     :return: HP gauge percentage value. None if the gauge is not found.
     """
     gauge_nodes = __filter_nodes(ship_ui_node, lambda node: __get_text_from_dict_entries(node, NAME) == gauge_name)
-    return gauge_nodes[0][ENTRIES_OF_INTEREST].get('_lastValue', 0) * 100 if gauge_nodes else None
+    last_value = gauge_nodes[0][ENTRIES_OF_INTEREST].get('_lastValue', 0) if gauge_nodes else None
+    return last_value * 100 if type(last_value) is float else None
 # Ship UI parsing functions end
 
 

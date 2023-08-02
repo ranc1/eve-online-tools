@@ -1,4 +1,5 @@
 import logging
+import time
 
 import lib.sound_module as sound
 from models.data_models import UiTree, ChatWindow, ChatUserEntity
@@ -13,27 +14,31 @@ class LocalMonitorBot:
         self.good_standing_pattern = config['GoodStandingPattern']
         self.consecutive_alarm_count = 0
         self.previous_hostiles = []
+        self.last_local_visible = time.time()
 
     def run(self, ui_tree: UiTree):
         local_chat = self.__get_local_chat(ui_tree.chat_windows)
+        current_time = time.time()
 
         if local_chat and local_chat.user_list:
             hostiles = list(filter(self.__is_hostile, local_chat.user_list))
             if len(hostiles) > 0:
-                if self.previous_hostiles == hostiles:
-                    self.consecutive_alarm_count += 1
-                else:
-                    self.previous_hostiles = hostiles
-                    self.consecutive_alarm_count = 0
-
                 if self.consecutive_alarm_count < 10:
                     sound.play_file('classic_alarm.wav')
-                    if self.consecutive_alarm_count < 1:
+                    self.consecutive_alarm_count += 1
+                    if self.previous_hostiles != hostiles:
                         logger.warning(f'{hostiles}.')
+
+                self.previous_hostiles = hostiles
             else:
                 self.consecutive_alarm_count = 0
+
+            self.last_local_visible = current_time
+        elif current_time - self.last_local_visible < 30:
+            logger.warning('Local chat not found!')
         else:
-            raise RuntimeError('local chat not found!')
+            sound.play_file('classic_alarm.wav')
+            logger.warning(f'Local chat not found! Last chat found: {time.ctime(self.last_local_visible)} PST')
 
     def __is_hostile(self, user: ChatUserEntity):
         if user.name == self.monitor_character:
