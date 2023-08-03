@@ -23,15 +23,19 @@ class LocalMonitorBot:
         if local_chat and local_chat.user_list:
             hostiles = list(filter(self.__is_hostile, local_chat.user_list))
             if len(hostiles) > 0:
+                if self.previous_hostiles != hostiles:
+                    self.previous_hostiles = hostiles
+                    self.consecutive_alarm_count = 0
+
                 if self.consecutive_alarm_count < 10:
+                    if self.consecutive_alarm_count < 1:
+                        logger.warning(f'{hostiles}.')
                     sound.play_file('classic_alarm.wav')
                     self.consecutive_alarm_count += 1
-                    if self.previous_hostiles != hostiles:
-                        logger.warning(f'{hostiles}.')
-
-                self.previous_hostiles = hostiles
-            else:
+            elif self.previous_hostiles:
+                logger.info('System clear.')
                 self.consecutive_alarm_count = 0
+                self.previous_hostiles = []
 
             self.last_local_visible = current_time
         elif current_time - self.last_local_visible < 30:
