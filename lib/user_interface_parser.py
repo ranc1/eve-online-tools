@@ -169,7 +169,7 @@ def __parse_user_lists_from_chat(chat_ui_node: dict) -> list[ChatUserEntity]:
     return user_entities
 
 
-def __get_standing_icon_hint(user_entry_node: dict) -> str:
+def __get_standing_icon_hint(user_entry_node: dict) -> Optional[str]:
     standing_icon_node = __filter_nodes(
         user_entry_node, lambda node: node[TYPE_NAME] == 'FlagIconWithState')
     return standing_icon_node[0][ENTRIES_OF_INTEREST]['_hint'] if standing_icon_node else None
@@ -270,7 +270,7 @@ def __get_last_value_from_gauge(gauge_name: str, ship_ui_node: dict) -> Optional
     """
     gauge_nodes = __filter_nodes(ship_ui_node, lambda node: __get_text_from_dict_entries(node, NAME) == gauge_name)
     last_value = gauge_nodes[0][ENTRIES_OF_INTEREST].get('_lastValue', 0) if gauge_nodes else None
-    return last_value * 100 if type(last_value) is float else None
+    return last_value * 100 if type(last_value) in [int, float] else None
 # Ship UI parsing functions end
 
 

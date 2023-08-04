@@ -1,4 +1,5 @@
 {
+  "CharacterName": "User A",
   "local_monitor_bot.LocalMonitorBot": {
     "Character": "User A",
     "GoodStandingPattern": [

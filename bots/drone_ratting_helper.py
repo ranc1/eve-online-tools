@@ -1,8 +1,8 @@
+import logging
 import time
 
-from models.data_models import UiTree, OverviewEntry, ShipUI
 import lib.sound_module as sound
-import logging
+from models.data_models import UiTree, OverviewEntry, ShipUI
 
 logger = logging.getLogger('drone-ratting-helper')
 logger.setLevel(logging.INFO)
@@ -44,8 +44,8 @@ class DroneRattingHelper:
                 if all([self.drones_idle_text in drone.text.lower() for drone in drones_in_space]):
                     if (current_time - self.last_drone_active_time > 20 and
                             current_time - self.last_drone_in_bay_time > 120 and self.consecutive_idle_alarm < 1):
-                        logger.info('Ratter is idle...')
                         sound.play_file('dog_bark.wav')
+                        logger.info('Ratter is idle...')
                         self.consecutive_idle_alarm += 1
                 else:
                     self.consecutive_idle_alarm = 0

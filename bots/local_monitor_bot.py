@@ -29,7 +29,7 @@ class LocalMonitorBot:
 
                 if self.consecutive_alarm_count < 10:
                     if self.consecutive_alarm_count < 1:
-                        logger.warning(f'{hostiles}.')
+                        logger.info(f'Hostiles: {", ".join([user.name for user in hostiles])}.')
                     sound.play_file('classic_alarm.wav')
                     self.consecutive_alarm_count += 1
             elif self.previous_hostiles:
@@ -42,7 +42,7 @@ class LocalMonitorBot:
             logger.warning('Local chat not found!')
         else:
             sound.play_file('classic_alarm.wav')
-            logger.warning(f'Local chat not found! Last chat found: {time.ctime(self.last_local_visible)} PST')
+            logger.error(f'Local chat not found! Last chat found: {time.ctime(self.last_local_visible)} PST')
 
     def __is_hostile(self, user: ChatUserEntity):
         if user.name == self.monitor_character:
