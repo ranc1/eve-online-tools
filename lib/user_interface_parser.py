@@ -239,7 +239,7 @@ def __get_ship_capacitor(ship_ui: dict) -> Optional[float]:
     p_marks = __filter_nodes(
         capacitor_container_nodes[0],
         lambda node: __get_text_from_dict_entries(node, NAME) == 'pmark') if capacitor_container_nodes else []
-    lit_p_marks = [color for color in map(__get_color_from_node, p_marks) if color.a < 20]
+    lit_p_marks = [color for color in map(__get_color_from_node, p_marks) if color and color.a < 20]
     return len(lit_p_marks) / len(p_marks) * 100 if p_marks else None
 
 
