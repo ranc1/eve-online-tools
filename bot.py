@@ -15,6 +15,8 @@ import lib.win_process as win_process
 from lib.user_interface_parser import UiTree
 
 CHARACTER_NAME_KEY = 'CharacterName'
+PROCESS_ID_KEY = 'ProcessId'
+BOTS_KEY = 'Bots'
 
 # Configure logging root
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s')
@@ -23,14 +25,17 @@ logger = logging.getLogger('bot-master')
 logger.setLevel(logging.INFO)
 
 
-def __get_process_id(arguments: argparse.Namespace, configuration: dict) -> int:
-    pid = arguments.p
-    if pid:
+def __get_process_id(profile: dict) -> int:
+    if PROCESS_ID_KEY in profile:
+        pid = profile[PROCESS_ID_KEY]
         logger.info(f'Using provided EVE process with PID: {pid}')
-    else:
-        character_name = configuration[CHARACTER_NAME_KEY]
+    elif CHARACTER_NAME_KEY in profile:
+        character_name = profile[CHARACTER_NAME_KEY]
         pid = win_process.get_game_process_id(character_name)
         logger.info(f'Using EVE client window for character: {character_name}. PID: {pid}')
+    else:
+        raise RuntimeError(
+            f'Cannot determine game process ID. Profile does not contain key {PROCESS_ID_KEY} or {CHARACTER_NAME_KEY}.')
 
     return pid
 
@@ -60,17 +65,15 @@ def __read_ui_tree(pid: int, output_file: str, root_address=None) -> UiTree:
                 logger.error(f'Failed to run memory reader: {mem_read_process.stderr}')
                 raise ex
             else:
-                logger.warning('Failed to read UI tree from memory.')
                 time.sleep(1)
 
 
-def __initialize_bots(bot_config: dict) -> list:
+def __initialize_bots(profile: dict) -> list:
     bots_in_config = []
-    for bot_name, bot_config in bot_config.items():
-        if bot_name != CHARACTER_NAME_KEY:
-            [module_name, class_name] = bot_name.split('.')
-            bot_class = getattr(importlib.import_module(f'bots.{module_name}'), class_name)
-            bots_in_config.append(bot_class(bot_config))
+    for bot_name, bot_config in profile.get(BOTS_KEY, {}).items():
+        [module_name, class_name] = bot_name.split('.')
+        bot_class = getattr(importlib.import_module(f'bots.{module_name}'), class_name)
+        bots_in_config.append(bot_class(bot_config))
 
     if not bots_in_config:
         raise RuntimeError('No bot is configured!')
@@ -81,16 +84,15 @@ def __initialize_bots(bot_config: dict) -> list:
 def __get_command_arguments() -> argparse.Namespace:
     arg_parser = argparse.ArgumentParser()
 
-    arg_parser.add_argument('-c', help='Bot configuration file name', required=True)
-    arg_parser.add_argument('-p', help='Process ID. If not specified, use first EVE Online process')
+    arg_parser.add_argument('-c', help='Client profile file name', required=True)
     arg_parser.add_argument('-d', help='Save memory read to tmp/ folder when failure occurs', action='store_true')
 
     return arg_parser.parse_args()
 
 
-def __read_configuration_file() -> dict:
-    config_file_path = f'config/{args.c}.json'
-    with open(config_file_path) as f:
+def __read_profile() -> dict:
+    profile_path = f'profiles/{args.c}.json'
+    with open(profile_path) as f:
         return json.load(f)
 
 
@@ -99,9 +101,9 @@ if __name__ == '__main__':
     os.chdir(sys.path[0])
 
     args = __get_command_arguments()
-    config = __read_configuration_file()
-    process_id = __get_process_id(args, config)
-    bots = __initialize_bots(config)
+    client_profile = __read_profile()
+    process_id = __get_process_id(client_profile)
+    bots = __initialize_bots(client_profile)
     debug_mode = args.d
     if debug_mode:
         logger.info('Debug mode enabled: Memory read will be saved if failure occurs.')

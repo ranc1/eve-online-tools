@@ -27,7 +27,7 @@ class DisplayRegion:
 @dataclass
 class Drone:
     text: str = None
-    hp_percentages: HitPointPercentages = HitPointPercentages
+    hp_percentages: HitPointPercentages = HitPointPercentages()
 
 
 @dataclass
@@ -74,14 +74,14 @@ class ChatWindow:
 class ModuleButton:
     is_active: bool = False
     is_busy: bool = False
-    display_region: DisplayRegion = DisplayRegion
+    display_region: DisplayRegion = DisplayRegion()
 
 
 @dataclass
 class ShipUI:
     capacitor_percentage: float = 0
     speed_text: str = None
-    hp_percentages: HitPointPercentages = HitPointPercentages
+    hp_percentages: HitPointPercentages = HitPointPercentages()
     module_buttons: list[ModuleButton] = field(default_factory=list)
 
 

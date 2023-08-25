@@ -1,0 +1,27 @@
+{
+  "CharacterName": "User A",
+  "Bots": {
+    "local_monitor_bot.LocalMonitorBot": {
+      "Character": "User A",
+      "GoodStandingPattern": [
+        "good standing",
+        "excellent standing",
+        "is in your"
+      ],
+      "AlarmSoundFile": "classic_alarm.wav",
+      "AlarmCount": 5
+    },
+    "drone_ratting_helper.DroneRattingHelper": {
+      "OverviewColumn": "Name",
+      "TargetsToAlarm": [
+        "npc name"
+      ],
+      "DronesIdleText": "Idle",
+      "HpAlarmType": "shield",
+      "HpAlarmThreshold": 30,
+      "TargetFoundAlarmFile": "short_alarm.wav",
+      "HpAlarmFile": "hp_alarm.wav",
+      "IdleAlarmFile": "dog_bark.wav"
+    }
+  }
+}
