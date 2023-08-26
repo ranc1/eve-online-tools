@@ -12,4 +12,4 @@
 1. Language: English (Other languages not tested)
 
 ## Tool Configurations
-1. Sample configuration file at `config/client_profile.json`.
+1. Sample user profile file at `profiles/client_profile.json`.
