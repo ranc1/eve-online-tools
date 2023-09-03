@@ -11,5 +11,7 @@
 ## Game Settings
 1. Language: English (Other languages not tested)
 
-## Tool Configurations
-1. Sample user profile file at `profiles/client_profile.json`.
+## Tools Setup
+1. Implement the bots in `bots/` folder.
+2. Sample user profile file at `profiles/client_profile.json`.
+3. Run the tools: `python bot.py -c client_profile`

@@ -186,27 +186,29 @@ def __parse_drones_window(drones_window: dict) -> DroneList:
     for entry in drone_entries:
         entry_texts = __get_all_contained_text(entry)
         if entry_texts:
-            drone = Drone(
-                text=entry_texts[0][0],
-                hp_percentages=HitPointPercentages(
-                    shield=__parse_drone_gauge_percentage(entry, 'shieldGauge'),
-                    armor=__parse_drone_gauge_percentage(entry, 'armorGauge'),
-                    structure=__parse_drone_gauge_percentage(entry, 'structGauge')
-                )
-            )
+            shield = __parse_drone_gauge_percentage(entry, 'shieldGauge')
+            armor = __parse_drone_gauge_percentage(entry, 'armorGauge')
+            structure = __parse_drone_gauge_percentage(entry, 'structGauge')
+            hp_percentages = None if any(hp is None for hp in [shield, armor, structure]) else HitPointPercentages(
+                shield=shield, armor=armor, structure=structure)
+            drone = Drone(text=entry_texts[0][0], hp_percentages=hp_percentages)
             drones.in_bay.append(drone) if 'InBay' in entry[TYPE_NAME] else drones.in_space.append(drone)
 
     return drones
 
 
-def __parse_drone_gauge_percentage(entry: dict, gauge_name: str) -> float:
-    container = __filter_nodes(entry, lambda node: __get_text_from_dict_entries(node, NAME) == gauge_name)[0]
-    gauge_bar = __filter_nodes(container, lambda node: __get_text_from_dict_entries(node, NAME) == 'droneGaugeBar')[0]
-    damage_bar = __filter_nodes(
-        container, lambda node: __get_text_from_dict_entries(node, NAME) == 'droneGaugeBarDmg')[0]
-    hp = gauge_bar[TOTAL_DISPLAY_REGION].width
-    dmg = damage_bar[TOTAL_DISPLAY_REGION].width
-    return (hp - dmg) / hp * 100 if hp > 0 else 0
+def __parse_drone_gauge_percentage(entry: dict, gauge_name: str) -> Optional[float]:
+    containers = __filter_nodes(entry, lambda node: __get_text_from_dict_entries(node, NAME) == gauge_name)
+    if not containers:
+        return None
+    else:
+        gauge_bar = __filter_nodes(
+            containers[0], lambda node: __get_text_from_dict_entries(node, NAME) == 'droneGaugeBar')[0]
+        damage_bar = __filter_nodes(
+            containers[0], lambda node: __get_text_from_dict_entries(node, NAME) == 'droneGaugeBarDmg')[0]
+        hp = gauge_bar[TOTAL_DISPLAY_REGION].width
+        dmg = damage_bar[TOTAL_DISPLAY_REGION].width
+        return (hp - dmg) / hp * 100 if hp > 0 else 0
 # Drones parsing functions end
 
 
@@ -224,7 +226,7 @@ def __get_ship_hit_points(ship_ui: dict) -> Optional[HitPointPercentages]:
     shield = __get_last_value_from_gauge('shieldGauge', ship_ui)
     armor = __get_last_value_from_gauge('armorGauge', ship_ui)
     structure = __get_last_value_from_gauge('structureGauge', ship_ui)
-    return None if any([hp is None for hp in [shield, armor, structure]]) else HitPointPercentages(
+    return None if any(hp is None for hp in [shield, armor, structure]) else HitPointPercentages(
         shield=shield, armor=armor, structure=structure)
 
 
