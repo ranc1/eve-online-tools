@@ -72,7 +72,7 @@ def __initialize_bots(profile: dict) -> list:
     bots_in_config = []
     for bot_name, bot_config in profile.get(BOTS_KEY, {}).items():
         [module_name, class_name] = bot_name.split('.')
-        bot_class = getattr(importlib.import_module(f'bots.{module_name}'), class_name)
+        bot_class = getattr(importlib.import_module(f'plugins.bots.{module_name}'), class_name)
         bots_in_config.append(bot_class(bot_config))
 
     if not bots_in_config:
@@ -91,7 +91,7 @@ def __get_command_arguments() -> argparse.Namespace:
 
 
 def __read_profile() -> dict:
-    profile_path = f'profiles/{args.c}.json'
+    profile_path = f'plugins/profiles/{args.c}.json'
     with open(profile_path) as f:
         return json.load(f)
 
