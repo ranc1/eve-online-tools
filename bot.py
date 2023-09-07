@@ -92,7 +92,7 @@ def __get_command_arguments() -> argparse.Namespace:
 
 def __read_profile() -> dict:
     profile_path = f'plugins/profiles/{args.c}.json'
-    with open(profile_path) as f:
+    with open(profile_path, encoding='utf-8') as f:
         return json.load(f)
 
 

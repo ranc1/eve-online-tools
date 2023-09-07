@@ -27,7 +27,7 @@ class DisplayRegion:
 @dataclass
 class Drone:
     text: str = None
-    hp_percentages: HitPointPercentages = HitPointPercentages()
+    hp_percentages: HitPointPercentages = field(default_factory=HitPointPercentages)
 
 
 @dataclass
@@ -53,9 +53,9 @@ class OverviewEntryIndicators:
 @dataclass
 class OverviewEntry:
     info: dict = field(default_factory=dict)
-    indicators: OverviewEntryIndicators = OverviewEntryIndicators()
-    icon_colors: ColorPercentages = ColorPercentages()
-    background_colors: ColorPercentages = ColorPercentages()
+    indicators: OverviewEntryIndicators = field(default_factory=OverviewEntryIndicators)
+    icon_colors: ColorPercentages = field(default_factory=ColorPercentages)
+    background_colors: ColorPercentages = field(default_factory=ColorPercentages)
 
 
 @dataclass
@@ -74,14 +74,14 @@ class ChatWindow:
 class ModuleButton:
     is_active: bool = False
     is_busy: bool = False
-    display_region: DisplayRegion = DisplayRegion()
+    display_region: DisplayRegion = field(default_factory=DisplayRegion)
 
 
 @dataclass
 class ShipUI:
     capacitor_percentage: float = 0
     speed_text: str = None
-    hp_percentages: HitPointPercentages = HitPointPercentages()
+    hp_percentages: HitPointPercentages = field(default_factory=HitPointPercentages)
     module_buttons: list[ModuleButton] = field(default_factory=list)
 
 
@@ -90,5 +90,5 @@ class UiTree:
     root_address: int = None
     chat_windows: list[ChatWindow] = field(default_factory=list)
     overview: list[OverviewEntry] = field(default_factory=list)
-    drones: DroneList = DroneList()
+    drones: DroneList = field(default_factory=DroneList)
     ship_ui: ShipUI = None
