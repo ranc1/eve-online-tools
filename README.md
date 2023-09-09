@@ -14,4 +14,5 @@
 ## Tools Setup
 1. Implement the bots in `plugins/bots/` folder.
 2. Sample user profile file at `plugins/profiles/client_profile.json`.
-3. Run the tools: `python bot.py -c <client_profile>`
+3. Add sound resources to `plugins/resources/`
+4. Run the tools: `python bot.py -c <client_profile>`
