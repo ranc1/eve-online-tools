@@ -199,16 +199,18 @@ def __parse_drones_window(drones_window: dict) -> DroneList:
 
 def __parse_drone_gauge_percentage(entry: dict, gauge_name: str) -> Optional[float]:
     containers = __filter_nodes(entry, lambda node: __get_text_from_dict_entries(node, NAME) == gauge_name)
-    if not containers:
-        return None
-    else:
-        gauge_bar = __filter_nodes(
-            containers[0], lambda node: __get_text_from_dict_entries(node, NAME) == 'droneGaugeBar')[0]
-        damage_bar = __filter_nodes(
-            containers[0], lambda node: __get_text_from_dict_entries(node, NAME) == 'droneGaugeBarDmg')[0]
-        hp = gauge_bar[TOTAL_DISPLAY_REGION].width
-        dmg = damage_bar[TOTAL_DISPLAY_REGION].width
-        return (hp - dmg) / hp * 100 if hp > 0 else 0
+    gauge_percentage = None
+    if containers:
+        gauge_bar_nodes = __filter_nodes(
+            containers[0], lambda node: __get_text_from_dict_entries(node, NAME) == 'droneGaugeBar')
+        damage_bar_nodes = __filter_nodes(
+            containers[0], lambda node: __get_text_from_dict_entries(node, NAME) == 'droneGaugeBarDmg')
+        if gauge_bar_nodes and damage_bar_nodes:
+            hp = gauge_bar_nodes[0][TOTAL_DISPLAY_REGION].width
+            dmg = damage_bar_nodes[0][TOTAL_DISPLAY_REGION].width
+            gauge_percentage = (hp - dmg) / hp * 100 if hp > 0 else 0
+
+    return gauge_percentage
 # Drones parsing functions end
 
 
